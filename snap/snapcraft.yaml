@@ -1,25 +1,31 @@
-name: srsran5g
-base: core22
-version: '24.10'
-summary: srsRAN 5G is a 5G software radio suite developed by SRS.
+name: ocudu
+title: OCUDU
+base: core24
+version: '26.04'
+summary: OCUDU is a 5G software radio suite developed by the Linux Foundation.
 description: |
-  srsRAN 5G is a free and open-source 5G software radio suite.
+  OCUDU is a free and open-source 5G software radio suite.
 
   It implements an integrated gNodeB (both CU and DU functions) that can be
   used with real radios or with a simulated radio over ZeroMQ. The srsRAN 4G
   project contains a simulated UE that can be used with this gNodeB for
-  testing. For more information, see https://www.srsran.com/.
+  testing. For more information, see https://docs.ocudu.org/.
 
-website: https://www.srsran.com/
-source-code: https://github.com/canonical/srsran5g-snap
-icon: snap/local/srsran.png
-license: AGPL-3.0
+website: https://docs.ocudu.org/
+source-code: https://github.com/ghislainbourgeois/ocudu-snap
+contact: https://github.com/ghislainbourgeois/ocudu-snap/issues
+issues: https://github.com/ghislainbourgeois/ocudu-snap/issues
+icon: snap/local/ocudu.png
+license: BSD-3-Clause-Open-MPI
 grade: stable
 confinement: strict
+platforms:
+  amd64:
+  arm64:
 
 apps:
   gnb:
-    command: usr/local/bin/gnb
+    command: bin/gnb-wrapper
     plugs:
       - kernel-module-observe
       - process-control
@@ -27,24 +33,20 @@ apps:
       - network-bind
       - network-control
       - system-observe
+      - raw-usb
 
 parts:
-  srsran:
+  ocudu:
     plugin: cmake
-    source: https://github.com/srsRAN/srsRAN_Project.git
+    source: https://gitlab.com/ocudu/ocudu.git
     source-type: git
-    source-tag: release_24_10
+    source-tag: release_26_04
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - -DENABLE_ZEROMQ=On
-      - -DENABLE_ASAN=True
-      - -DAUTO_DETECT_ISA=OFF
-      - -DBUILD_TESTS=OFF
-      - -DHAVE_SSE=True
-      - -DHAVE_AVX=True
-      - -DGCC_ARCH=x86-64
     build-packages:
       - binutils-dev
+      - libboost-all-dev
       - libdwarf-dev
       - libdw-dev
       - libelf-dev
@@ -52,18 +54,34 @@ parts:
       - libgtest-dev
       - libmbedtls-dev
       - libsctp-dev
+      - libuhd-dev
       - libyaml-cpp-dev
       - libzmq3-dev
       - pkg-config
+      - python3-requests
     stage-packages:
-      - libasan6
-      - libdw1
+      #- libasan8
+      #- libatomic1
+      - libdw1t64
       - libfftw3-single3
-      - libmbedcrypto7
+      - libmbedcrypto7t64
       - libsctp1
-      - libyaml-cpp0.7
+      - libsodium23
+      - libuhd4.6.0t64
+      - libyaml-cpp0.8
       - libzmq5
-    prime:
-      - -usr/lib/x86_64-linux-gnu/libfftw3f_omp.so.3.5.8
-      - -usr/lib/x86_64-linux-gnu/libfftw3f_threads.so.3.5.8
-      - -usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0
+      - python3-requests
+      - uhd-host
+    override-prime: |
+      craftctl default
+      ${CRAFT_PRIME}/usr/bin/uhd_images_downloader -i ${CRAFT_PRIME}/usr/local/share/uhd/images
+      mkdir -p ${CRAFT_PRIME}/bin
+      cat > ${CRAFT_PRIME}/bin/gnb-wrapper << 'EOF'
+      #!/bin/sh
+      # UHD first probes image names relative to the current directory. Use a
+      # directory readable under strict confinement before starting it.
+      cd "$SNAP"
+      export UHD_IMAGES_DIR="$SNAP/usr/local/share/uhd/images"
+      exec "$SNAP/usr/local/bin/gnb" "$@"
+      EOF
+      chmod +x ${CRAFT_PRIME}/bin/gnb-wrapper
