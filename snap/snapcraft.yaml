@@ -44,7 +44,7 @@ parts:
     source-tag: release_26_04
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=RelWithDebInfo
-      - -DMCPU=cortex-a76
+      - -DMCPU=cortex-a76+crypto
       - -DMARCH=x86-64-v3
       - -DENABLE_ZEROMQ=On
     build-packages:
