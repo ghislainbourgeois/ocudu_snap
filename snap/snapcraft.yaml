@@ -25,6 +25,7 @@ platforms:
 
 apps:
   gnb:
+    daemon: simple
     command: bin/gnb-wrapper
     plugs:
       - kernel-module-observe
@@ -43,6 +44,8 @@ parts:
     source-tag: release_26_04
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - -DMCPU=cortex-a76
+      - -DMARCH=x86-64-v3
       - -DENABLE_ZEROMQ=On
     build-packages:
       - binutils-dev
@@ -82,6 +85,11 @@ parts:
       # directory readable under strict confinement before starting it.
       cd "$SNAP"
       export UHD_IMAGES_DIR="$SNAP/usr/local/share/uhd/images"
+      # The daemon is started by systemd without arguments; fall back to the
+      # config file in the persistent common data directory.
+      if [ "$#" -eq 0 ]; then
+        set -- -c "$SNAP_COMMON/gnb.yml"
+      fi
       exec "$SNAP/usr/local/bin/gnb" "$@"
       EOF
       chmod +x ${CRAFT_PRIME}/bin/gnb-wrapper
